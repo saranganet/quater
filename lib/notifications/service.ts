@@ -28,6 +28,7 @@ export interface CaseNotificationPayload {
   caseNumber: string;
   courtName?: string;
   changeDescription: string;
+  eventKey?: string;
   nextHearingDate: string | null;
   firm?: FirmInfo | null;
   recipients: RecipientInfo[];
@@ -36,7 +37,7 @@ export interface CaseNotificationPayload {
 export interface NotificationResult {
   recipientType: string;
   recipientPhone: string;
-  status: "SENT" | "MOCKED" | "FAILED";
+  status: "SENT" | "MOCKED" | "FAILED" | "DUPLICATE_SKIPPED";
   providerMessageId?: string;
   errorMessage?: string;
 }
@@ -141,6 +142,48 @@ export class WhatsAppNotificationService implements NotificationService {
     for (const recipient of payload.recipients) {
       const maskedPhone = maskPhoneNumber(recipient.phone);
 
+      // Deterministic idempotency key: caseId:phone:eventKeyOrDescription
+      const idempotencyKey = `${payload.caseId}:${recipient.phone}:${payload.eventKey || payload.changeDescription}`;
+
+      // 🛡️ DEDUPLICATION GUARD: Check if this exact update was ALREADY sent to this recipient
+      const alreadyDelivered = await prisma.notification.findFirst({
+        where: {
+          idempotencyKey,
+          status: { in: ["SENT", "MOCKED"] },
+        },
+      });
+
+      if (alreadyDelivered) {
+        console.log(
+          `[WhatsApp Deduplication] 🛡️ SUPPRESSED duplicate message for ${recipient.type} (${recipient.name} - ${maskedPhone}). Already sent on ${alreadyDelivered.sentAt?.toISOString() || "previous run"}.`
+        );
+
+        // Record the deduplication suppression in database audit log
+        await prisma.notification.create({
+          data: {
+            caseEventId: payload.caseEventId,
+            recipientType: recipient.type,
+            recipientName: recipient.name,
+            recipientPhone: recipient.phone,
+            messageBody: alreadyDelivered.messageBody,
+            channel: "WHATSAPP_DEDUP",
+            status: "DUPLICATE_SKIPPED",
+            idempotencyKey,
+            providerMessageId: alreadyDelivered.providerMessageId,
+            errorMessage: `Suppressed: update already delivered on ${alreadyDelivered.sentAt ? new Date(alreadyDelivered.sentAt).toLocaleString() : "earlier check"} (Msg ID: ${alreadyDelivered.providerMessageId})`,
+            sentAt: alreadyDelivered.sentAt,
+          },
+        });
+
+        results.push({
+          recipientType: recipient.type,
+          recipientPhone: recipient.phone,
+          status: "DUPLICATE_SKIPPED",
+          providerMessageId: alreadyDelivered.providerMessageId || undefined,
+        });
+        continue;
+      }
+
       // Generate customized text message based on whether recipient is Lawyer or Client
       const personalizedMessage =
         recipient.type === "LAWYER"
@@ -165,7 +208,7 @@ export class WhatsAppNotificationService implements NotificationService {
       // 1. QR Gateway Mode (Local Baileys connection)
       if (this.mode === "qr") {
         console.log(
-          `[WhatsApp QR Service] Sending update to ${recipient.type} (${recipient.name} - ${maskedPhone})`
+          `[WhatsApp QR Service] Dispatching update to ${recipient.type} (${recipient.name} - ${maskedPhone})`
         );
 
         const qrResult = await sendWhatsAppMessage(recipient.phone, personalizedMessage);
@@ -176,9 +219,12 @@ export class WhatsAppNotificationService implements NotificationService {
             data: {
               caseEventId: payload.caseEventId,
               recipientType: recipient.type,
+              recipientName: recipient.name,
               recipientPhone: recipient.phone,
+              messageBody: personalizedMessage,
               channel: "WHATSAPP_QR",
               status: "SENT",
+              idempotencyKey,
               providerMessageId,
               sentAt: new Date(),
             },
@@ -200,9 +246,12 @@ export class WhatsAppNotificationService implements NotificationService {
             data: {
               caseEventId: payload.caseEventId,
               recipientType: recipient.type,
+              recipientName: recipient.name,
               recipientPhone: recipient.phone,
+              messageBody: personalizedMessage,
               channel: "WHATSAPP_QR",
               status: "FAILED",
+              idempotencyKey,
               errorMessage: qrResult.error,
             },
           });
@@ -224,14 +273,18 @@ export class WhatsAppNotificationService implements NotificationService {
         );
 
         try {
+          const providerMessageId = `mock_wa_${Date.now()}_${Math.random().toString(36).substring(7)}`;
           const notificationRecord = await prisma.notification.create({
             data: {
               caseEventId: payload.caseEventId,
               recipientType: recipient.type,
+              recipientName: recipient.name,
               recipientPhone: recipient.phone,
-              channel: "WHATSAPP",
+              messageBody: personalizedMessage,
+              channel: "WHATSAPP_MOCK",
               status: "MOCKED",
-              providerMessageId: `mock_wa_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              idempotencyKey,
+              providerMessageId,
               sentAt: new Date(),
             },
           });
@@ -276,9 +329,12 @@ export class WhatsAppNotificationService implements NotificationService {
             data: {
               caseEventId: payload.caseEventId,
               recipientType: recipient.type,
+              recipientName: recipient.name,
               recipientPhone: recipient.phone,
+              messageBody: personalizedMessage,
               channel: "WHATSAPP_CLOUD",
               status: "SENT",
+              idempotencyKey,
               providerMessageId,
               sentAt: new Date(),
             },
@@ -300,9 +356,12 @@ export class WhatsAppNotificationService implements NotificationService {
             data: {
               caseEventId: payload.caseEventId,
               recipientType: recipient.type,
+              recipientName: recipient.name,
               recipientPhone: recipient.phone,
+              messageBody: personalizedMessage,
               channel: "WHATSAPP_CLOUD",
               status: "FAILED",
+              idempotencyKey,
               errorMessage: sendErr?.message || "Unknown delivery failure",
             },
           });

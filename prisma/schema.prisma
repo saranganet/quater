@@ -85,25 +85,30 @@ model CaseEvent {
   id                 String         @id @default(uuid())
   caseId             String
   eventType          String
+  eventKey           String?        // Deterministic update key (e.g. CNR:NEXT_HEARING:2026-11-15)
   description        String
   previousData       Json?
   newData            Json?
   detectedAt         DateTime       @default(now())
-  notificationStatus String         @default("PENDING") // PENDING, SENT, FAILED, SKIPPED
+  notificationStatus String         @default("PENDING") // PENDING, SENT, FAILED, SKIPPED, DUPLICATE_SKIPPED
 
   case               Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
   notifications      Notification[]
 
   @@index([caseId])
+  @@index([eventKey])
 }
 
 model Notification {
   id                String    @id @default(uuid())
   caseEventId       String
   recipientType     String    // LAWYER, CLIENT
+  recipientName     String?   // Name of lawyer or client
   recipientPhone    String
+  messageBody       String?   @db.Text // Full logged text of the message sent
   channel           String    @default("WHATSAPP")
-  status            String    @default("PENDING") // PENDING, SENT, FAILED, MOCKED
+  status            String    @default("PENDING") // PENDING, SENT, FAILED, MOCKED, DUPLICATE_SKIPPED
+  idempotencyKey    String?   // caseId:recipientPhone:eventType:value
   providerMessageId String?
   errorMessage      String?
   sentAt            DateTime?
@@ -112,4 +117,6 @@ model Notification {
   caseEvent         CaseEvent @relation(fields: [caseEventId], references: [id], onDelete: Cascade)
 
   @@index([caseEventId])
+  @@index([recipientPhone])
+  @@index([idempotencyKey])
 }

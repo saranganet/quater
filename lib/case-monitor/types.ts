@@ -12,6 +12,7 @@ export type CaseEventType =
 
 export interface DetectedChangeEvent {
   type: CaseEventType;
+  eventKey?: string;
   description: string;
   previousValue?: unknown;
   newValue?: unknown;

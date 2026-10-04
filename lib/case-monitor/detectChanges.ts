@@ -3,7 +3,7 @@ import { DetectedChangeEvent, ChangeDetectionResult } from "./types";
 
 /**
  * Compares two normalized case snapshots and returns structured update events.
- * Only returns events when real changes occur.
+ * Assigns a deterministic `eventKey` to every event for bulletproof deduplication.
  */
 export function detectCaseChanges(
   previousData: NormalizedCaseData,
@@ -17,6 +17,7 @@ export function detectCaseChanges(
   if (prevNextDate !== newNextDate && newNextDate !== null) {
     events.push({
       type: "NEXT_HEARING_DATE_CHANGED",
+      eventKey: `HEARING_DATE:${newNextDate}`,
       description: prevNextDate
         ? `Next hearing date updated: ${prevNextDate} → ${newNextDate}`
         : `Next hearing scheduled for ${newNextDate}`,
@@ -31,6 +32,7 @@ export function detectCaseChanges(
   if (prevStage.toLowerCase() !== newStage.toLowerCase() && newStage) {
     events.push({
       type: "CASE_STAGE_CHANGED",
+      eventKey: `STAGE:${newStage.toLowerCase()}`,
       description: prevStage
         ? `Case stage moved from "${prevStage}" to "${newStage}"`
         : `Case stage updated to "${newStage}"`,
@@ -48,8 +50,11 @@ export function detectCaseChanges(
   if (newOrderCount > prevOrderCount || (newOrderUrl && newOrderUrl !== prevOrderUrl)) {
     const orderDesc = newData.latestOrder?.description || "Court Order / Judgment";
     const orderDate = newData.latestOrder?.orderDate ? ` dated ${newData.latestOrder.orderDate}` : "";
+    const orderIdentifier = newOrderUrl || `${newData.latestOrder?.orderDate || "date"}:${newOrderCount}`;
+
     events.push({
       type: "NEW_ORDER",
+      eventKey: `ORDER:${orderIdentifier}`,
       description: `New court order uploaded${orderDate} (${orderDesc})`,
       previousValue: previousData.latestOrder ?? { orderCount: prevOrderCount },
       newValue: newData.latestOrder ?? { orderCount: newOrderCount },
@@ -68,8 +73,11 @@ export function detectCaseChanges(
 
   if (newHearingCount > prevHearingCount || (newHearingDate && newHearingDate !== prevHearingDate)) {
     const purpose = newData.latestHearing?.purposeOfListing ? ` for ${newData.latestHearing.purposeOfListing}` : "";
+    const hearingIdentifier = newHearingDate || `${newData.latestHearing?.businessOnDate || "hearing"}:${newHearingCount}`;
+
     events.push({
       type: "NEW_HEARING",
+      eventKey: `HEARING:${hearingIdentifier}`,
       description: `New hearing entry recorded on ${newData.latestHearing?.businessOnDate || "court register"}${purpose}`,
       previousValue: previousData.latestHearing ?? { hearingCount: prevHearingCount },
       newValue: newData.latestHearing ?? { hearingCount: newHearingCount },
@@ -88,6 +96,7 @@ export function detectCaseChanges(
   ) {
     events.push({
       type: "NEW_PROCEEDING",
+      eventKey: `PROCEEDING:${newProceedingDate || "date"}:${(newBusiness || "").slice(0, 30)}`,
       description: `Court proceeding updated: ${newData.latestProceeding?.business?.slice(0, 100) || "New business on date recorded"}`,
       previousValue: previousData.latestProceeding,
       newValue: newData.latestProceeding,
@@ -107,6 +116,7 @@ export function detectCaseChanges(
   if (isNowDecided) {
     events.push({
       type: "CASE_DECIDED",
+      eventKey: `DECIDED:${newDecisionDate || newStatus}`,
       description: `Case marked as DISPOSED / DECIDED on ${newDecisionDate || "court record"}.`,
       previousValue: { caseStatus: prevStatus, decisionDate: prevDecisionDate },
       newValue: { caseStatus: newStatus, decisionDate: newDecisionDate },
@@ -114,6 +124,7 @@ export function detectCaseChanges(
   } else if (prevStatus !== newStatus && newStatus) {
     events.push({
       type: "CASE_STATUS_CHANGED",
+      eventKey: `STATUS:${newStatus}`,
       description: `Case status changed from ${prevStatus || "UNKNOWN"} to ${newStatus}`,
       previousValue: prevStatus,
       newValue: newStatus,
@@ -127,6 +138,7 @@ export function detectCaseChanges(
     if (prevLastHearing !== newLastHearing && newLastHearing) {
       events.push({
         type: "GENERAL_CASE_UPDATE",
+        eventKey: `GENERAL:${newLastHearing}`,
         description: `Case details updated: last hearing recorded as ${newLastHearing}`,
         previousValue: prevLastHearing,
         newValue: newLastHearing,

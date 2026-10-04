@@ -113,6 +113,7 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
       data: {
         caseId: caseRecord.id,
         eventType: event.type,
+        eventKey: event.eventKey || null,
         description: event.description,
         previousData: (event.previousValue as any) ?? null,
         newData: (event.newValue as any) ?? null,
@@ -130,6 +131,7 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
         caseNumber: caseRecord.caseNumber,
         courtName: newNormalized.courtName || caseRecord.courtName,
         changeDescription: event.description,
+        eventKey: event.eventKey,
         nextHearingDate: newNormalized.nextHearingDate,
         firm: caseRecord.firm,
         recipients: [
@@ -146,11 +148,14 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
         ],
       });
 
-      const allDelivered = notifResults.every((r) => r.status === "SENT" || r.status === "MOCKED");
+      const isAllSkipped = notifResults.every((r) => r.status === "DUPLICATE_SKIPPED");
+      const anySent = notifResults.some((r) => r.status === "SENT" || r.status === "MOCKED");
+      const eventStatus = isAllSkipped ? "SKIPPED" : anySent ? "SENT" : "FAILED";
+
       await prisma.caseEvent.update({
         where: { id: caseEvent.id },
         data: {
-          notificationStatus: allDelivered ? "SENT" : "FAILED",
+          notificationStatus: eventStatus,
         },
       });
     } catch (notifErr: any) {
@@ -281,6 +286,7 @@ export async function simulateCaseUpdate(
       data: {
         caseId: caseRecord.id,
         eventType: event.type,
+        eventKey: event.eventKey || null,
         description: event.description,
         previousData: (event.previousValue as any) ?? null,
         newData: (event.newValue as any) ?? null,
@@ -297,6 +303,7 @@ export async function simulateCaseUpdate(
         caseNumber: caseRecord.caseNumber,
         courtName: simulatedNormalized.courtName || caseRecord.courtName,
         changeDescription: event.description,
+        eventKey: event.eventKey,
         nextHearingDate: simulatedNormalized.nextHearingDate,
         firm: caseRecord.firm,
         recipients: [
@@ -313,11 +320,14 @@ export async function simulateCaseUpdate(
         ],
       });
 
-      const allDelivered = notifResults.every((r) => r.status === "SENT" || r.status === "MOCKED");
+      const isAllSkipped = notifResults.every((r) => r.status === "DUPLICATE_SKIPPED");
+      const anySent = notifResults.some((r) => r.status === "SENT" || r.status === "MOCKED");
+      const eventStatus = isAllSkipped ? "SKIPPED" : anySent ? "SENT" : "FAILED";
+
       await prisma.caseEvent.update({
         where: { id: caseEvent.id },
         data: {
-          notificationStatus: allDelivered ? "SENT" : "FAILED",
+          notificationStatus: eventStatus,
         },
       });
     } catch (notifErr: any) {

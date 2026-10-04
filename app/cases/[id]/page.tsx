@@ -28,6 +28,7 @@ import { NormalizedCaseData } from "@/lib/ecourts/types";
 interface CaseEventItem {
   id: string;
   eventType: string;
+  eventKey?: string;
   description: string;
   previousData: any;
   newData: any;
@@ -36,11 +37,14 @@ interface CaseEventItem {
   notifications: Array<{
     id: string;
     recipientType: string;
+    recipientName?: string | null;
     recipientPhone: string;
+    messageBody?: string | null;
     status: string;
-    providerMessageId?: string;
-    errorMessage?: string;
-    sentAt: string;
+    providerMessageId?: string | null;
+    errorMessage?: string | null;
+    sentAt: string | null;
+    createdAt?: string;
   }>;
 }
 
@@ -714,32 +718,73 @@ export default function CaseDetailPage({
 
                     <p className="text-xs font-medium text-slate-200">{ev.description}</p>
 
-                    {/* WhatsApp Notification status for this event */}
+                    {/* WhatsApp Notification delivery audit trail for this event */}
                     {ev.notifications.length > 0 && (
-                      <div className="pt-2 border-t border-slate-800/80 space-y-1">
+                      <div className="pt-2 border-t border-slate-800/80 space-y-2">
                         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                          WhatsApp Dispatch
+                          WhatsApp Delivery & Audit Log
                         </span>
                         {ev.notifications.map((n) => (
                           <div
                             key={n.id}
-                            className="flex items-center justify-between text-[11px] text-slate-300 bg-slate-900 px-2 py-1 rounded"
+                            className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5"
                           >
-                            <span>
-                              {n.recipientType}: {n.recipientPhone.slice(0, 4)}****
-                              {n.recipientPhone.slice(-4)}
-                            </span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                n.status === "SENT"
-                                  ? "bg-emerald-500/15 text-emerald-400"
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-semibold text-slate-200">
+                                {n.recipientType === "LAWYER" ? "⚖️ Lawyer" : "👤 Client"}:{" "}
+                                {n.recipientName || (n.recipientType === "LAWYER" ? caseData.lawyer.name : caseData.client.name)}
+                                <span className="text-slate-400 font-mono text-[10px] ml-1">
+                                  ({n.recipientPhone.slice(0, 5)}****{n.recipientPhone.slice(-4)})
+                                </span>
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1 ${
+                                  n.status === "SENT"
+                                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                    : n.status === "DUPLICATE_SKIPPED"
+                                    ? "bg-sky-500/15 text-sky-400 border border-sky-500/30"
+                                    : n.status === "MOCKED"
+                                    ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                    : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                                }`}
+                              >
+                                {n.status === "SENT"
+                                  ? "🟢 Sent & Delivered"
+                                  : n.status === "DUPLICATE_SKIPPED"
+                                  ? "🛡️ Duplicate Prevented"
                                   : n.status === "MOCKED"
-                                  ? "bg-blue-500/15 text-blue-400"
-                                  : "bg-rose-500/15 text-rose-400"
-                              }`}
-                            >
-                              {n.status}
-                            </span>
+                                  ? "🔵 Logged (Mock)"
+                                  : "🔴 Failed"}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+                              <span>
+                                {n.sentAt ? `Delivered: ${new Date(n.sentAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })}` : "Queued"}
+                              </span>
+                              {n.providerMessageId && (
+                                <span className="font-mono text-slate-500">
+                                  ID: {n.providerMessageId.slice(0, 16)}...
+                                </span>
+                              )}
+                            </div>
+
+                            {n.errorMessage && (
+                              <p className="text-[10px] text-sky-300/80 italic">
+                                {n.errorMessage}
+                              </p>
+                            )}
+
+                            {n.messageBody && (
+                              <details className="text-[10px] text-slate-400 pt-1 group">
+                                <summary className="cursor-pointer text-amber-400/90 hover:text-amber-300 transition-colors">
+                                  View Dispatched WhatsApp Message Copy
+                                </summary>
+                                <div className="mt-1.5 p-2 bg-slate-950 rounded border border-slate-800 font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                  {n.messageBody}
+                                </div>
+                              </details>
+                            )}
                           </div>
                         ))}
                       </div>
