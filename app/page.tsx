@@ -21,6 +21,7 @@ export default async function DashboardPage() {
     include: {
       lawyer: true,
       client: true,
+      firm: true,
       snapshots: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -162,6 +163,11 @@ export default async function DashboardPage() {
                       {c._count.events > 0 && (
                         <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
                           {c._count.events} update{c._count.events === 1 ? "" : "s"} detected
+                        </span>
+                      )}
+                      {c.firm && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-slate-800 text-amber-300 border border-amber-500/20">
+                          🏛️ {c.firm.name}
                         </span>
                       )}
                     </div>

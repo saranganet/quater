@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,12 +9,22 @@ import {
   Phone,
   Hash,
   ArrowRight,
-  CheckCircle2,
   AlertCircle,
   Loader2,
   Sparkles,
-  ShieldAlert,
+  Building2,
+  MessageSquare,
 } from "lucide-react";
+
+interface Firm {
+  id: string;
+  name: string;
+  slug: string;
+  leadAdvocate?: string | null;
+  contactPhone?: string | null;
+  clientMessageIntro?: string | null;
+  clientCustomNote?: string | null;
+}
 
 export default function NewCasePage() {
   const router = useRouter();
@@ -25,16 +35,35 @@ export default function NewCasePage() {
   const [clientName, setClientName] = useState("");
   const [clientWhatsAppNumber, setClientWhatsAppNumber] = useState("");
 
+  // Firm selection
+  const [firms, setFirms] = useState<Firm[]>([]);
+  const [selectedFirmId, setSelectedFirmId] = useState<string>("");
+
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Load firms
+  useEffect(() => {
+    fetch("/api/firms")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setFirms(data);
+          setSelectedFirmId(data[0].id);
+        }
+      })
+      .catch((err) => console.error("Failed to load firms:", err));
+  }, []);
+
+  const selectedFirm = firms.find((f) => f.id === selectedFirmId);
+
   // Quick fill sample data for fast testing
   const handleQuickFill = () => {
     setCnr("DLND020047882015");
-    setLawyerName("Adv. Raghav Malhotra");
-    setLawyerPhone("+91 98112 34567");
-    setClientName("Vipin Agarwal");
+    setLawyerName("Adv. Nalawade");
+    setLawyerPhone("+91 98200 11223");
+    setClientName("Rahul Verma");
     setClientWhatsAppNumber("+91 98765 43210");
     setErrorMessage(null);
   };
@@ -65,6 +94,7 @@ export default function NewCasePage() {
           lawyerPhone,
           clientName,
           clientWhatsAppNumber,
+          firmId: selectedFirmId || undefined,
         }),
       });
 
@@ -99,21 +129,25 @@ export default function NewCasePage() {
           Dashboard
         </Link>
         <span>/</span>
-        <span className="text-slate-200">Onboard Case</span>
+        <span className="text-slate-200">Track New Case</span>
       </nav>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="p-6 sm:p-8 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800/80">
+        {/* Card Header */}
+        <div className="p-6 sm:p-8 border-b border-slate-800/80 bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/20">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-                <Scale className="w-6 h-6 text-amber-400" />
-                Onboard Indian Court Case
-              </h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Enter the official CNR number and WhatsApp alert recipients to establish automated change monitoring.
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                <Scale className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight">
+                  Track New Court Case
+                </h1>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Fetch live snapshot from eCourtsIndia and configure WhatsApp alerts for Lawyer & Client
+                </p>
+              </div>
             </div>
 
             <button
@@ -138,6 +172,43 @@ export default function NewCasePage() {
               </div>
             </div>
           )}
+
+          {/* Firm Selection */}
+          <div className="space-y-2 p-4 rounded-xl bg-slate-950/40 border border-slate-800">
+            <label htmlFor="firmSelect" className="block text-sm font-semibold text-amber-300 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-amber-400" />
+              Select Law Firm (Customizes Client WhatsApp Message)
+            </label>
+            <select
+              id="firmSelect"
+              value={selectedFirmId}
+              onChange={(e) => setSelectedFirmId(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+            >
+              {firms.map((firm) => (
+                <option key={firm.id} value={firm.id}>
+                  {firm.name} ({firm.leadAdvocate || "Lead Counsel"})
+                </option>
+              ))}
+            </select>
+
+            {selectedFirm && (
+              <div className="mt-3 p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-xs text-slate-300 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-medium text-amber-300">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Customized Message for Client:
+                </div>
+                <div className="italic text-slate-400 bg-slate-950 p-2.5 rounded border border-slate-800 font-mono text-[11px] leading-relaxed">
+                  ⚖️ COURT CASE UPDATE - {selectedFirm.name}
+                  <br />
+                  {selectedFirm.clientMessageIntro}
+                  <br />
+                  💬 Note: {selectedFirm.clientCustomNote}
+                  {selectedFirm.contactPhone ? `<br />📞 Contact: ${selectedFirm.contactPhone}` : ""}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* CNR Input Section */}
           <div className="space-y-2">
@@ -183,7 +254,7 @@ export default function NewCasePage() {
                   required
                   value={lawyerName}
                   onChange={(e) => setLawyerName(e.target.value)}
-                  placeholder="Adv. John Doe"
+                  placeholder="Adv. Nalawade"
                   className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   disabled={isLoading}
                 />
@@ -228,7 +299,7 @@ export default function NewCasePage() {
                   required
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Jane Smith"
+                  placeholder="Rahul Verma"
                   className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   disabled={isLoading}
                 />

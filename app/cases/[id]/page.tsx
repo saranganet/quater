@@ -63,6 +63,15 @@ interface CaseDetailData {
     name: string;
     whatsappNumber: string;
   };
+  firm?: {
+    id: string;
+    name: string;
+    slug: string;
+    leadAdvocate?: string | null;
+    contactPhone?: string | null;
+    clientMessageIntro?: string | null;
+    clientCustomNote?: string | null;
+  } | null;
   snapshots: Array<{
     id: string;
     snapshotHash: string;
@@ -307,6 +316,11 @@ export default function CaseDetailPage({
                 <ShieldCheck className="w-3 h-3 text-emerald-400" />
                 Monitoring Enabled
               </span>
+              {caseData.firm && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                  🏛️ Firm: {caseData.firm.name}
+                </span>
+              )}
             </div>
 
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
@@ -623,7 +637,7 @@ export default function CaseDetailPage({
 
             <div className="space-y-3 text-xs">
               {/* Lawyer */}
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-amber-400">Lawyer</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -632,10 +646,21 @@ export default function CaseDetailPage({
                 </div>
                 <p className="font-medium text-slate-200">{caseData.lawyer.name}</p>
                 <p className="font-mono text-slate-400">{caseData.lawyer.phone}</p>
+                <a
+                  href={`https://wa.me/${caseData.lawyer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                    `⚖️ Case Update\n\nCase: ${caseData.caseNumber}\nCNR: ${caseData.cnr}\n\n${caseData.events[0]?.description || "Case update monitored"}\n\nNext hearing: ${normalized?.nextHearingDate || "To be notified"}\n\nPlease check the case details or contact your advocate for further information.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full mt-2 inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors shadow"
+                >
+                  <Send className="w-3 h-3" />
+                  Open in WhatsApp (1-Click)
+                </a>
               </div>
 
               {/* Client */}
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-emerald-400">Client</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -644,6 +669,17 @@ export default function CaseDetailPage({
                 </div>
                 <p className="font-medium text-slate-200">{caseData.client.name}</p>
                 <p className="font-mono text-slate-400">{caseData.client.whatsappNumber}</p>
+                <a
+                  href={`https://wa.me/${caseData.client.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(
+                    `⚖️ Case Update\n\nCase: ${caseData.caseNumber}\nCNR: ${caseData.cnr}\n\n${caseData.events[0]?.description || "Case update monitored"}\n\nNext hearing: ${normalized?.nextHearingDate || "To be notified"}\n\nPlease check the case details or contact your advocate for further information.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full mt-2 inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors shadow"
+                >
+                  <Send className="w-3 h-3" />
+                  Open in WhatsApp (1-Click)
+                </a>
               </div>
             </div>
           </div>

@@ -7,6 +7,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Firm {
+  id                 String   @id @default(uuid())
+  name               String
+  slug               String   @unique
+  leadAdvocate       String?
+  contactPhone       String?
+  clientMessageIntro String?
+  clientCustomNote   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  cases              Case[]
+}
+
 model Lawyer {
   id        String   @id @default(uuid())
   name      String
@@ -32,6 +46,7 @@ model Case {
   cnr               String         @unique
   lawyerId          String
   clientId          String
+  firmId            String?
   courtName         String
   caseNumber        String
   filingYear        String?
@@ -43,12 +58,14 @@ model Case {
 
   lawyer            Lawyer         @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
   client            Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  firm              Firm?          @relation(fields: [firmId], references: [id], onDelete: SetNull)
   snapshots         CaseSnapshot[]
   events            CaseEvent[]
 
   @@index([cnr])
   @@index([lawyerId])
   @@index([clientId])
+  @@index([firmId])
 }
 
 model CaseSnapshot {

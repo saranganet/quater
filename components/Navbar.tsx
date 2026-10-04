@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Scale, PlusCircle, LayoutDashboard, Bell, ShieldCheck } from "lucide-react";
+import { WhatsAppGatewayStatus } from "./WhatsAppGatewayStatus";
 
 export function Navbar() {
   const isWhatsAppLive = process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true";
@@ -37,6 +38,9 @@ export function Navbar() {
               <LayoutDashboard className="w-4 h-4" />
               Dashboard
             </Link>
+
+            {/* WhatsApp Gateway Quick Status & QR Modal */}
+            <WhatsAppGatewayStatus />
 
             <Link
               href="/cases/new"

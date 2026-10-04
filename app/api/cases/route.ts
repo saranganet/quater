@@ -11,6 +11,7 @@ export async function GET() {
       include: {
         lawyer: true,
         client: true,
+        firm: true,
         snapshots: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { cnr, lawyerName, lawyerPhone, clientName, clientWhatsAppNumber } =
+    const { cnr, lawyerName, lawyerPhone, clientName, clientWhatsAppNumber, firmId } =
       parseResult.data;
 
     // Check if case with this CNR already exists
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
           cnr,
           lawyerId: lawyer.id,
           clientId: client.id,
+          firmId: firmId || null,
           courtName: normalizedData.courtName || "eCourt",
           caseNumber: normalizedData.caseNumber || "N/A",
           filingYear,

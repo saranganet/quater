@@ -13,6 +13,7 @@ export async function GET(
       include: {
         lawyer: true,
         client: true,
+        firm: true,
         snapshots: {
           orderBy: { createdAt: "desc" },
           take: 5,

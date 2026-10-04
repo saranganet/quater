@@ -30,6 +30,7 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
     include: {
       lawyer: true,
       client: true,
+      firm: true,
       snapshots: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -127,8 +128,10 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
         caseId: caseRecord.id,
         cnr: caseRecord.cnr,
         caseNumber: caseRecord.caseNumber,
+        courtName: newNormalized.courtName || caseRecord.courtName,
         changeDescription: event.description,
         nextHearingDate: newNormalized.nextHearingDate,
+        firm: caseRecord.firm,
         recipients: [
           {
             type: "LAWYER",
@@ -211,6 +214,7 @@ export async function simulateCaseUpdate(
     include: {
       lawyer: true,
       client: true,
+      firm: true,
       snapshots: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -291,8 +295,10 @@ export async function simulateCaseUpdate(
         caseId: caseRecord.id,
         cnr: caseRecord.cnr,
         caseNumber: caseRecord.caseNumber,
+        courtName: simulatedNormalized.courtName || caseRecord.courtName,
         changeDescription: event.description,
         nextHearingDate: simulatedNormalized.nextHearingDate,
+        firm: caseRecord.firm,
         recipients: [
           {
             type: "LAWYER",

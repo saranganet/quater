@@ -39,6 +39,7 @@ export const cnrSchema = z
 
 export const createCaseSchema = z.object({
   cnr: cnrSchema,
+  firmId: z.string().optional(),
   lawyerName: z.string().trim().min(2, "Lawyer name must be at least 2 characters"),
   lawyerPhone: indianPhoneSchema,
   clientName: z.string().trim().min(2, "Client name must be at least 2 characters"),
