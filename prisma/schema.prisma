@@ -1,0 +1,98 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Lawyer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cases     Case[]
+}
+
+model Client {
+  id             String   @id @default(uuid())
+  name           String
+  whatsappNumber String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  cases          Case[]
+}
+
+model Case {
+  id                String         @id @default(uuid())
+  cnr               String         @unique
+  lawyerId          String
+  clientId          String
+  courtName         String
+  caseNumber        String
+  filingYear        String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  lastCheckedAt     DateTime?
+  lastModifiedAt    DateTime?
+  monitoringEnabled Boolean        @default(true)
+
+  lawyer            Lawyer         @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+  client            Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  snapshots         CaseSnapshot[]
+  events            CaseEvent[]
+
+  @@index([cnr])
+  @@index([lawyerId])
+  @@index([clientId])
+}
+
+model CaseSnapshot {
+  id              String   @id @default(uuid())
+  caseId          String
+  snapshotHash    String
+  rawData         Json
+  importantFields Json
+  createdAt       DateTime @default(now())
+
+  case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CaseEvent {
+  id                 String         @id @default(uuid())
+  caseId             String
+  eventType          String
+  description        String
+  previousData       Json?
+  newData            Json?
+  detectedAt         DateTime       @default(now())
+  notificationStatus String         @default("PENDING") // PENDING, SENT, FAILED, SKIPPED
+
+  case               Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  notifications      Notification[]
+
+  @@index([caseId])
+}
+
+model Notification {
+  id                String    @id @default(uuid())
+  caseEventId       String
+  recipientType     String    // LAWYER, CLIENT
+  recipientPhone    String
+  channel           String    @default("WHATSAPP")
+  status            String    @default("PENDING") // PENDING, SENT, FAILED, MOCKED
+  providerMessageId String?
+  errorMessage      String?
+  sentAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  caseEvent         CaseEvent @relation(fields: [caseEventId], references: [id], onDelete: Cascade)
+
+  @@index([caseEventId])
+}
