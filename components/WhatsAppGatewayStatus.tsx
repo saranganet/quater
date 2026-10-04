@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from "react";
 import {
-  QrCode,
-  CheckCircle2,
-  AlertCircle,
   Smartphone,
   LogOut,
   Send,
   Loader2,
   X,
   RefreshCw,
+  Check,
 } from "lucide-react";
 
 interface GatewayStatus {
@@ -30,7 +28,7 @@ export function WhatsAppGatewayStatus() {
 
   // Test message states
   const [testPhone, setTestPhone] = useState("");
-  const [testMessage, setTestMessage] = useState("Hello from Quater! ⚖️ Your automated court case notification system is connected.");
+  const [testMessage, setTestMessage] = useState("QUATER UPDATE: Automated court notification gateway connected.");
   const [sendingTest, setSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -42,14 +40,13 @@ export function WhatsAppGatewayStatus() {
         setStatus(data);
       }
     } catch {
-      // Offline
       setStatus({
         status: "DISCONNECTED",
         qrCodeDataUrl: null,
         rawQr: null,
         connectedPhone: null,
         connectedName: null,
-        lastError: "Cannot reach gateway",
+        lastError: "Gateway offline",
         updatedAt: new Date().toISOString(),
       });
     }
@@ -57,19 +54,18 @@ export function WhatsAppGatewayStatus() {
 
   useEffect(() => {
     fetchStatus();
-    // Poll every 3 seconds while modal is open, or every 10 seconds in background
     const interval = setInterval(fetchStatus, isOpen ? 3000 : 10000);
     return () => clearInterval(interval);
   }, [isOpen]);
 
   const handleLogout = async () => {
-    if (!confirm("Are you sure you want to disconnect this WhatsApp number?")) return;
+    if (!confirm("Disconnect this WhatsApp number?")) return;
     setLoading(true);
     try {
       await fetch("/api/whatsapp/logout", { method: "POST" });
       await fetchStatus();
     } catch (err: any) {
-      alert("Failed to disconnect: " + err.message);
+      alert("Failed: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -93,18 +89,18 @@ export function WhatsAppGatewayStatus() {
       if (res.ok && data.success) {
         setTestResult({
           success: true,
-          message: data.info || "WhatsApp message delivered successfully!",
+          message: data.info || "Delivered to WhatsApp.",
         });
       } else {
         setTestResult({
           success: false,
-          message: data.error || "Failed to send message",
+          message: data.error || "Failed to send.",
         });
       }
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.message || "Failed to connect to gateway",
+        message: err.message || "Gateway unreachable.",
       });
     } finally {
       setSendingTest(false);
@@ -113,7 +109,6 @@ export function WhatsAppGatewayStatus() {
 
   const isConnected = status?.status === "CONNECTED";
   const isScan = status?.status === "SCAN_QR";
-  const isDisconnected = status?.status === "DISCONNECTED";
 
   return (
     <>
@@ -121,208 +116,165 @@ export function WhatsAppGatewayStatus() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-          isConnected
-            ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60"
-            : isScan
-            ? "bg-amber-950/60 border-amber-500/40 text-amber-300 animate-pulse hover:bg-amber-900/60"
-            : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800"
-        }`}
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono font-medium border border-neutral-300 hover:border-black bg-white text-neutral-900 transition-colors"
       >
         <span
           className={`w-2 h-2 rounded-full ${
             isConnected
-              ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
+              ? "bg-emerald-600"
               : isScan
-              ? "bg-amber-400 shadow-[0_0_8px_#fbbf24]"
-              : "bg-rose-500"
+              ? "bg-amber-500 animate-pulse"
+              : "bg-neutral-400"
           }`}
         />
         {isConnected ? (
-          <span>WhatsApp: +{status?.connectedPhone}</span>
+          <span>+{status?.connectedPhone}</span>
         ) : isScan ? (
           <span>Scan WhatsApp QR</span>
         ) : (
-          <span>WhatsApp Gateway</span>
+          <span>WhatsApp Disconnected</span>
         )}
       </button>
 
       {/* Modal Dialog */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-white border border-neutral-200 rounded-xl p-6 shadow-2xl text-neutral-900">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">Quater WhatsApp Gateway</h3>
-                  <p className="text-xs text-slate-400">
-                    Connect your dedicated WhatsApp Business number
-                  </p>
-                </div>
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-4 mb-5">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-black">
+                  WhatsApp Device Gateway
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Link dedicated business number via QR
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-1 rounded text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content Based on Status */}
             {isConnected ? (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
-                  <div>
-                    <div className="font-semibold text-white">
-                      Connected to +{status.connectedPhone}
-                    </div>
-                    <div className="text-xs text-emerald-300/80">
-                      All court case alerts for both Lawyers and Clients will be dispatched automatically from this number.
-                    </div>
+              <div className="space-y-5">
+                <div className="p-4 rounded-lg bg-neutral-50 border border-neutral-200 space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-black">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    Connected: +{status.connectedPhone}
                   </div>
+                  <p className="text-[11px] text-neutral-500 font-mono">
+                    All case updates will dispatch automatically from this phone.
+                  </p>
                 </div>
 
                 {/* Test Message Box */}
-                <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                    <Send className="w-4 h-4 text-amber-400" />
-                    Send Live Test WhatsApp Message
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Enter your phone number below to test real-time message delivery right now:
-                  </p>
-                  <form onSubmit={handleSendTest} className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="e.g. +91 98765 43210 or 9876543210"
-                      value={testPhone}
-                      onChange={(e) => setTestPhone(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                      required
-                    />
-                    <textarea
-                      value={testMessage}
-                      onChange={(e) => setTestMessage(e.target.value)}
-                      rows={2}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={sendingTest || !testPhone}
-                      className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
-                    >
-                      {sendingTest ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Sending via Quater WhatsApp...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          Dispatch Test Message
-                        </>
-                      )}
-                    </button>
-                  </form>
+                <form onSubmit={handleSendTest} className="space-y-3">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-700">
+                    Test Live Dispatch
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Phone number (+91 98...)"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-md text-xs font-mono text-black placeholder-neutral-400 focus:outline-none focus:border-black"
+                    required
+                  />
+                  <textarea
+                    value={testMessage}
+                    onChange={(e) => setTestMessage(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-md text-xs text-black placeholder-neutral-400 focus:outline-none focus:border-black"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingTest || !testPhone}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-black hover:bg-neutral-800 text-white font-medium text-xs transition-colors disabled:opacity-50"
+                  >
+                    {sendingTest ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Dispatching...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        Send Test Ping
+                      </>
+                    )}
+                  </button>
+                </form>
 
-                  {testResult && (
-                    <div
-                      className={`p-3 rounded-lg text-xs border ${
-                        testResult.success
-                          ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-200"
-                          : "bg-rose-950/50 border-rose-500/40 text-rose-200"
-                      }`}
-                    >
-                      {testResult.message}
-                    </div>
-                  )}
-                </div>
+                {testResult && (
+                  <div
+                    className={`p-3 rounded-md text-xs border font-mono ${
+                      testResult.success
+                        ? "bg-neutral-50 border-neutral-300 text-neutral-900"
+                        : "bg-neutral-50 border-rose-300 text-rose-700"
+                    }`}
+                  >
+                    {testResult.message}
+                  </div>
+                )}
 
                 {/* Disconnect Button */}
-                <div className="pt-2 flex justify-end">
+                <div className="pt-2 border-t border-neutral-100 flex justify-end">
                   <button
                     type="button"
                     onClick={handleLogout}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-rose-400 hover:text-rose-300 py-1.5 px-3 rounded-lg border border-rose-500/20 hover:bg-rose-950/30 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-rose-600 transition-colors"
                   >
-                    <LogOut className="w-4 h-4" />
-                    Disconnect Number / Scan Different SIM
+                    <LogOut className="w-3.5 h-3.5" />
+                    Unlink Number
                   </button>
                 </div>
               </div>
             ) : isScan ? (
-              <div className="text-center space-y-5">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-semibold text-amber-300">
-                    Scan with WhatsApp on your Phone
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Use your dedicated test SIM card number to link Quater
-                  </p>
-                </div>
+              <div className="space-y-4 text-center">
+                <p className="text-xs text-neutral-600">
+                  Open WhatsApp on your phone &gt; Settings &gt; Linked Devices &gt; Link a Device.
+                </p>
 
                 {/* QR Code Render */}
-                <div className="flex justify-center">
-                  <div className="p-3 bg-white rounded-2xl shadow-xl border-4 border-amber-500/20">
+                <div className="flex justify-center py-2">
+                  <div className="p-3 bg-white border border-neutral-300 rounded-lg shadow-sm">
                     {status.qrCodeDataUrl ? (
                       <img
                         src={status.qrCodeDataUrl}
                         alt="WhatsApp Web QR Code"
-                        className="w-64 h-64 rounded-lg"
+                        className="w-56 h-56"
                       />
                     ) : (
-                      <div className="w-64 h-64 flex flex-col items-center justify-center text-slate-500">
-                        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-                        <span className="text-xs mt-2">Generating QR Code...</span>
+                      <div className="w-56 h-56 flex flex-col items-center justify-center text-neutral-400 text-xs">
+                        <Loader2 className="w-6 h-6 animate-spin mb-2 text-black" />
+                        Generating code...
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Step by step guide */}
-                <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-left space-y-2 text-xs text-slate-300">
-                  <div className="font-semibold text-white">How to link:</div>
-                  <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                    <li>Open WhatsApp on your phone</li>
-                    <li>Tap <strong className="text-slate-200">Settings</strong> (or 3 dots on Android)</li>
-                    <li>Select <strong className="text-slate-200">Linked Devices</strong></li>
-                    <li>Tap <strong className="text-slate-200">Link a Device</strong> and point your camera here</li>
-                  </ol>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Auto-refreshing QR code every 3 seconds...
+                <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-neutral-400">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Refreshing QR code every 3s
                 </div>
               </div>
             ) : (
-              <div className="space-y-4 text-center py-4">
-                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl inline-block text-rose-400">
-                  <AlertCircle className="w-8 h-8 mx-auto" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-base font-bold text-white">
-                    Gateway Connecting or Offline
-                  </h4>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    {status?.lastError || "The WhatsApp background service is initializing. Please wait a moment."}
-                  </p>
-                </div>
-
+              <div className="space-y-4 py-4 text-center">
+                <p className="text-xs text-neutral-600">
+                  Gateway offline. Starting service in background...
+                </p>
                 <button
                   type="button"
                   onClick={fetchStatus}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white"
+                  className="px-3 py-1.5 rounded-md border border-neutral-300 hover:border-black text-xs font-mono"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Refresh Connection
+                  Retry Connection
                 </button>
               </div>
             )}
