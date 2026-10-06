@@ -31,6 +31,7 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
       lawyer: true,
       client: true,
       firm: true,
+      contacts: true,
       snapshots: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -122,6 +123,20 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
       },
     });
 
+    // Check if the chamber has enabled MANUAL message dispatching
+    if (caseRecord.firm?.dispatchMode === "MANUAL") {
+      await prisma.caseEvent.update({
+        where: { id: caseEvent.id },
+        data: {
+          notificationStatus: "PENDING_APPROVAL",
+        },
+      });
+      console.log(
+        `[Monitor] Chamber ${caseRecord.firm?.name || caseRecord.firmId} is in MANUAL dispatch mode. Event ${caseEvent.id} held as PENDING_APPROVAL for lawyer review.`
+      );
+      continue;
+    }
+
     // Send notifications to both Lawyer and Client
     try {
       const notifResults = await notificationService.sendCaseUpdateNotification({
@@ -145,6 +160,11 @@ export async function monitorCase(caseId: string): Promise<MonitorCaseResult> {
             name: caseRecord.client.name,
             phone: caseRecord.client.whatsappNumber,
           },
+          ...(caseRecord.contacts || []).map((c) => ({
+            type: c.type as "LAWYER" | "CLIENT",
+            name: c.role ? `${c.name} (${c.role})` : c.name,
+            phone: c.phone,
+          })),
         ],
       });
 
@@ -220,6 +240,7 @@ export async function simulateCaseUpdate(
       lawyer: true,
       client: true,
       firm: true,
+      contacts: true,
       snapshots: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -317,6 +338,11 @@ export async function simulateCaseUpdate(
             name: caseRecord.client.name,
             phone: caseRecord.client.whatsappNumber,
           },
+          ...(caseRecord.contacts || []).map((c) => ({
+            type: c.type as "LAWYER" | "CLIENT",
+            name: c.role ? `${c.name} (${c.role})` : c.name,
+            phone: c.phone,
+          })),
         ],
       });
 

@@ -1,5 +1,6 @@
 import { NormalizedCaseData } from "../ecourts/types";
 import { DetectedChangeEvent, ChangeDetectionResult } from "./types";
+import { formatDateDMY } from "../whatsapp/date-formatter";
 
 /**
  * Compares two normalized case snapshots and returns structured update events.
@@ -19,8 +20,8 @@ export function detectCaseChanges(
       type: "NEXT_HEARING_DATE_CHANGED",
       eventKey: `HEARING_DATE:${newNextDate}`,
       description: prevNextDate
-        ? `Next hearing date updated: ${prevNextDate} → ${newNextDate}`
-        : `Next hearing scheduled for ${newNextDate}`,
+        ? `Next hearing date updated: ${formatDateDMY(prevNextDate)} → ${formatDateDMY(newNextDate)}`
+        : `Next hearing scheduled for ${formatDateDMY(newNextDate)}`,
       previousValue: prevNextDate,
       newValue: newNextDate,
     });
@@ -49,7 +50,9 @@ export function detectCaseChanges(
 
   if (newOrderCount > prevOrderCount || (newOrderUrl && newOrderUrl !== prevOrderUrl)) {
     const orderDesc = newData.latestOrder?.description || "Court Order / Judgment";
-    const orderDate = newData.latestOrder?.orderDate ? ` dated ${newData.latestOrder.orderDate}` : "";
+    const orderDate = newData.latestOrder?.orderDate
+      ? ` dated ${formatDateDMY(newData.latestOrder.orderDate)}`
+      : "";
     const orderIdentifier = newOrderUrl || `${newData.latestOrder?.orderDate || "date"}:${newOrderCount}`;
 
     events.push({
@@ -78,7 +81,7 @@ export function detectCaseChanges(
     events.push({
       type: "NEW_HEARING",
       eventKey: `HEARING:${hearingIdentifier}`,
-      description: `New hearing entry recorded on ${newData.latestHearing?.businessOnDate || "court register"}${purpose}`,
+      description: `New hearing entry recorded on ${formatDateDMY(newData.latestHearing?.businessOnDate, "court register")}${purpose}`,
       previousValue: previousData.latestHearing ?? { hearingCount: prevHearingCount },
       newValue: newData.latestHearing ?? { hearingCount: newHearingCount },
     });
@@ -117,7 +120,7 @@ export function detectCaseChanges(
     events.push({
       type: "CASE_DECIDED",
       eventKey: `DECIDED:${newDecisionDate || newStatus}`,
-      description: `Case marked as DISPOSED / DECIDED on ${newDecisionDate || "court record"}.`,
+      description: `Case marked as DISPOSED / DECIDED on ${formatDateDMY(newDecisionDate, "court record")}.`,
       previousValue: { caseStatus: prevStatus, decisionDate: prevDecisionDate },
       newValue: { caseStatus: newStatus, decisionDate: newDecisionDate },
     });

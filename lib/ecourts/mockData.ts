@@ -1,28 +1,31 @@
-import { ECourtsCaseDetailResponse } from "./types";
+import { ECourtsCaseDetailResponse, ECourtsCourtCaseData } from "./types";
 
 /**
  * High-fidelity mock case response matching the exact structure from eCourts docs
  * Useful for local offline testing and demonstrations.
  */
-export function getMockECourtsCase(cnr: string): ECourtsCaseDetailResponse {
+export function getMockECourtsCase(
+  cnr: string,
+  overrides?: Partial<ECourtsCourtCaseData>
+): ECourtsCaseDetailResponse {
   const cleanCnr = cnr.trim().toUpperCase();
 
   return {
     data: {
       courtCaseData: {
         cnr: cleanCnr,
-        caseNumber: "202400248072016",
-        courtName: "Chief Metropolitan Magistrate, New Delhi, PHC",
-        district: "New Delhi",
-        state: "DL",
-        stateCode: "26",
-        districtCode: "7",
+        caseNumber: overrides?.caseNumber || "202400248072016",
+        courtName: overrides?.courtName || "Chief Metropolitan Magistrate, New Delhi, PHC",
+        district: overrides?.district || "New Delhi",
+        state: overrides?.state || "DL",
+        stateCode: overrides?.stateCode || "26",
+        districtCode: overrides?.districtCode || "7",
         courtCode: 2,
         courtNo: 2,
-        caseType: "CC",
-        caseTypeRaw: "Ct Cases",
-        caseTypeSub: "Criminal Procedure Code.",
-        caseStatus: "PENDING",
+        caseType: overrides?.caseType || "CC",
+        caseTypeRaw: overrides?.caseTypeRaw || "Ct Cases",
+        caseTypeSub: overrides?.caseTypeSub || "Criminal Procedure Code.",
+        caseStatus: overrides?.caseStatus || "PENDING",
         filingNumber: "27843/2024",
         filingDate: "2024-01-15",
         registrationNumber: "24807/2024",

@@ -6,6 +6,7 @@ import {
   CaseUpdateTemplateVariables,
 } from "../whatsapp/templates";
 import { sendWhatsAppMessage } from "../whatsapp/qr-client";
+import { formatDateDMY, formatDatesInText } from "../whatsapp/date-formatter";
 
 export interface RecipientInfo {
   type: "LAWYER" | "CLIENT";
@@ -56,8 +57,10 @@ export function formatLawyerCaseUpdateMessage(payload: {
   nextHearingDate: string | null;
   clientName: string;
 }): string {
-  const nextHearingText = payload.nextHearingDate
-    ? `📅 *Next Hearing:* ${payload.nextHearingDate}`
+  const formattedHearingDate = formatDateDMY(payload.nextHearingDate);
+  const formattedDescription = formatDatesInText(payload.changeDescription);
+  const nextHearingText = formattedHearingDate
+    ? `📅 *Next Hearing:* ${formattedHearingDate}`
     : "📅 *Next Hearing:* To be scheduled";
 
   return `⚖️ *[QUATER CASE ALERT]*
@@ -67,7 +70,7 @@ Advocate, there is an official update for your tracked case:
 🏛️ *Court:* ${payload.courtName || "eCourts India"}
 🆔 *CNR:* ${payload.cnr}
 
-🔔 *Update:* ${payload.changeDescription}
+🔔 *Update:* ${formattedDescription}
 ${nextHearingText}
 
 ✅ _Client (${payload.clientName}) has also been notified automatically._
@@ -86,15 +89,12 @@ export function formatClientCaseUpdateMessage(payload: {
   const firmName = payload.firm?.name || "Your Legal Counsel";
   const intro =
     payload.firm?.clientMessageIntro ||
-    `Dear ${payload.clientName}, greetings from ${firmName}. Here is an official status update regarding your ongoing court matter:`;
-  const note =
-    payload.firm?.clientCustomNote ||
-    `Our litigation team is actively attending to this matter. Please keep this update for your records.`;
-  const contact = payload.firm?.contactPhone
-    ? `\n📞 *Office Contact:* ${payload.firm.contactPhone}`
-    : "";
-  const nextHearingText = payload.nextHearingDate
-    ? `📅 *Next Hearing Date:* ${payload.nextHearingDate}`
+    `Dear ${payload.clientName}, greetings from ${firmName}. Here is an official court update regarding your ongoing matter:`;
+  const contactPhone = payload.firm?.contactPhone || "+91 98506 70809";
+  const contact = `\n📞 *Contact:* ${contactPhone}`;
+  const formattedHearingDate = formatDateDMY(payload.nextHearingDate);
+  const nextHearingText = formattedHearingDate
+    ? `📅 *Next Hearing Date:* ${formattedHearingDate}`
     : "📅 *Next Hearing Date:* To be scheduled";
 
   return `⚖️ *COURT CASE UPDATE*
@@ -105,12 +105,8 @@ ${intro}
 📋 *Case:* ${payload.caseNumber || "N/A"}
 🏛️ *Court:* ${payload.courtName || "eCourts India"}
 🆔 *CNR:* ${payload.cnr}
-
-🔔 *Status:* ${payload.changeDescription}
 ${nextHearingText}
-
-💬 *Note from Counsel:*
-${note}${contact}
+${contact}
 
 _Sent on behalf of ${firmName} via Quater Notification System._`;
 }
@@ -312,8 +308,8 @@ export class WhatsAppNotificationService implements NotificationService {
         const templateVariables: CaseUpdateTemplateVariables = {
           caseNumber: payload.caseNumber,
           cnr: payload.cnr,
-          changeDescription: payload.changeDescription,
-          nextHearingDate: payload.nextHearingDate || "Not scheduled",
+          changeDescription: formatDatesInText(payload.changeDescription),
+          nextHearingDate: formatDateDMY(payload.nextHearingDate, "Not scheduled"),
         };
 
         try {

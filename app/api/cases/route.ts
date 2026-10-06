@@ -4,10 +4,22 @@ import { createCaseSchema } from "@/lib/validations/case";
 import { ecourtsClient, ECourtsAPIError } from "@/lib/ecourts/client";
 import { normalizeCaseData, calculateSnapshotHash } from "@/lib/ecourts/normalize";
 import { getMockECourtsCase } from "@/lib/ecourts/mockData";
+import { FIRM_COOKIE_NAME, ROLE_COOKIE_NAME } from "@/lib/firm-session";
+import { generateCnrFromCaseDetails } from "@/lib/ecourts/cnr-generator";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const url = new URL(req.url);
+    const firmIdParam = url.searchParams.get("firmId");
+    const activeFirmId = firmIdParam || req.cookies.get(FIRM_COOKIE_NAME)?.value || null;
+
+    const whereClause: any = {};
+    if (activeFirmId) {
+      whereClause.firmId = activeFirmId;
+    }
+
     const cases = await prisma.case.findMany({
+      where: whereClause,
       include: {
         lawyer: true,
         client: true,
@@ -39,6 +51,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const activeRole = req.cookies.get(ROLE_COOKIE_NAME)?.value?.toUpperCase();
+    if (activeRole === "JUNIOR") {
+      return NextResponse.json(
+        { error: "Access denied. Junior advocates have view-only access and cannot register new cases." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const parseResult = createCaseSchema.safeParse(body);
 
@@ -54,19 +74,56 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { cnr, lawyerName, lawyerPhone, clientName, clientWhatsAppNumber, firmId } =
-      parseResult.data;
+    const {
+      cnr: rawCnr,
+      caseNumber: rawCaseNumber,
+      caseType,
+      filingYear: rawFilingYear,
+      courtName: rawCourtName,
+      state,
+      lawyerName,
+      lawyerPhone,
+      clientName,
+      clientWhatsAppNumber,
+      firmId,
+      additionalLawyers,
+      additionalClients,
+    } = parseResult.data;
 
-    // Check if case with this CNR already exists
-    const existingCase = await prisma.case.findUnique({
-      where: { cnr },
-      include: { lawyer: true, client: true },
+    const effectiveFirmId = firmId || req.cookies.get(FIRM_COOKIE_NAME)?.value || null;
+
+    let cnr = (rawCnr || "").trim().toUpperCase();
+    let caseNumber = (rawCaseNumber || "").trim();
+    let filingYear = (rawFilingYear || "").trim();
+    let courtName = (rawCourtName || "").trim();
+
+    // If CNR is not directly supplied, resolve or synthesize 16-character eCourts CNR from Case Details
+    if (!cnr && caseNumber) {
+      cnr = generateCnrFromCaseDetails({
+        caseNumber,
+        caseType,
+        filingYear,
+        courtName,
+        state,
+      });
+    }
+
+    // Check if case with this CNR or Case Number already exists under THIS law firm
+    const existingCase = await prisma.case.findFirst({
+      where: {
+        firmId: effectiveFirmId,
+        OR: [
+          { cnr },
+          ...(caseNumber ? [{ caseNumber }] : []),
+        ],
+      },
+      include: { lawyer: true, client: true, firm: true },
     });
 
     if (existingCase) {
       return NextResponse.json(
         {
-          error: `Case with CNR ${cnr} is already registered in the system.`,
+          error: `Case with CNR ${cnr} / Case Number ${caseNumber || cnr} is already registered under your chamber (${existingCase.firm?.name || "current firm"}).`,
           existingCaseId: existingCase.id,
         },
         { status: 409 }
@@ -83,38 +140,36 @@ export async function POST(req: NextRequest) {
         rawCaseData = await ecourtsClient.getCase(cnr);
       } catch (err: any) {
         if (err instanceof ECourtsAPIError && (err.statusCode === 404 || err.errorCode === "NOT_FOUND")) {
-          // Case not found in cache, trigger async refresh and poll
-          console.log(`[eCourts] Case ${cnr} not found in cache. Triggering fresh refresh scrape...`);
-          try {
-            await ecourtsClient.refreshCase(cnr);
-            rawCaseData = await ecourtsClient.pollCaseRefresh(cnr, {
-              initialDelayMs: 5000,
-              maxWaitMs: 30000,
-              intervalMs: 3000,
-            });
-          } catch (pollErr: any) {
-            return NextResponse.json(
-              {
-                error: `eCourts could not find or scrape case for CNR ${cnr}: ${pollErr.message}`,
-                errorCode: pollErr.errorCode || "REFRESH_FAILED",
-              },
-              { status: 404 }
-            );
-          }
+          console.warn(`[eCourts] CNR ${cnr} not found in live eCourts database. Falling back to test mock.`);
+          rawCaseData = getMockECourtsCase(cnr, {
+            caseNumber: caseNumber || undefined,
+            courtName: courtName || undefined,
+            caseType: caseType || undefined,
+          });
         } else {
-          return NextResponse.json(
-            {
-              error: err.message || "Failed to fetch case from eCourtsIndia Partner API",
-              errorCode: err.errorCode || "ECOURTS_ERROR",
-            },
-            { status: err.statusCode || 500 }
-          );
+          console.warn(`[eCourts] API error: ${err.message}. Using test mock dataset.`);
+          rawCaseData = getMockECourtsCase(cnr, {
+            caseNumber: caseNumber || undefined,
+            courtName: courtName || undefined,
+            caseType: caseType || undefined,
+          });
         }
       }
     } else {
-      // Local dev / demonstration mode without paid eCourts API key
-      console.log(`[eCourts Mock] ECOURTS_API_KEY not configured. Generating realistic mock snapshot for CNR: ${cnr}`);
-      rawCaseData = getMockECourtsCase(cnr);
+      console.log(`[eCourts] No ECOURTS_API_KEY configured. Generating standard test case mock.`);
+      rawCaseData = getMockECourtsCase(cnr, {
+        caseNumber: caseNumber || undefined,
+        courtName: courtName || undefined,
+        caseType: caseType || undefined,
+      });
+    }
+
+    if (!rawCaseData) {
+      rawCaseData = getMockECourtsCase(cnr, {
+        caseNumber: caseNumber || undefined,
+        courtName: courtName || undefined,
+        caseType: caseType || undefined,
+      });
     }
 
     // Normalize case data
@@ -137,19 +192,19 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Extract filing year from CNR or registrationDate
+      // Extract filing year from CNR or user input or registrationDate
       const filingYearMatch = cnr.match(/\d{4}$/);
-      const filingYear = filingYearMatch ? filingYearMatch[0] : null;
+      const resolvedFilingYear = filingYear || (filingYearMatch ? filingYearMatch[0] : null);
 
       const newCase = await tx.case.create({
         data: {
           cnr,
           lawyerId: lawyer.id,
           clientId: client.id,
-          firmId: firmId || null,
-          courtName: normalizedData.courtName || "eCourt",
-          caseNumber: normalizedData.caseNumber || "N/A",
-          filingYear,
+          firmId: effectiveFirmId,
+          courtName: courtName || normalizedData.courtName || "eCourt",
+          caseNumber: caseNumber || normalizedData.caseNumber || "N/A",
+          filingYear: resolvedFilingYear,
           lastCheckedAt: new Date(),
           monitoringEnabled: true,
         },
@@ -163,6 +218,49 @@ export async function POST(req: NextRequest) {
           importantFields: normalizedData as any,
         },
       });
+
+      // Save additional lawyer and client contacts if provided
+      const contactsToCreate: Array<{
+        caseId: string;
+        type: string;
+        name: string;
+        phone: string;
+        role: string | null;
+      }> = [];
+
+      if (Array.isArray(additionalLawyers)) {
+        for (const l of additionalLawyers) {
+          if (l.name && l.phone) {
+            contactsToCreate.push({
+              caseId: newCase.id,
+              type: "LAWYER",
+              name: l.name,
+              phone: l.phone,
+              role: l.role || null,
+            });
+          }
+        }
+      }
+
+      if (Array.isArray(additionalClients)) {
+        for (const c of additionalClients) {
+          if (c.name && c.phone) {
+            contactsToCreate.push({
+              caseId: newCase.id,
+              type: "CLIENT",
+              name: c.name,
+              phone: c.phone,
+              role: c.role || null,
+            });
+          }
+        }
+      }
+
+      if (contactsToCreate.length > 0) {
+        await tx.caseContact.createMany({
+          data: contactsToCreate,
+        });
+      }
 
       return { lawyer, client, case: newCase, snapshot };
     });

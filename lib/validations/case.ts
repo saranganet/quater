@@ -37,14 +37,52 @@ export const cnrSchema = z
     }
   );
 
-export const createCaseSchema = z.object({
-  cnr: cnrSchema,
-  firmId: z.string().optional(),
-  lawyerName: z.string().trim().min(2, "Lawyer name must be at least 2 characters"),
-  lawyerPhone: indianPhoneSchema,
-  clientName: z.string().trim().min(2, "Client name must be at least 2 characters"),
-  clientWhatsAppNumber: indianPhoneSchema,
+export const caseContactInputSchema = z.object({
+  name: z.string().trim().min(2, "Contact name must be at least 2 characters"),
+  phone: indianPhoneSchema,
+  type: z.enum(["LAWYER", "CLIENT"]),
+  role: z.string().trim().optional(),
 });
+
+export const createCaseSchema = z
+  .object({
+    cnr: z.string().trim().optional(),
+    caseNumber: z.string().trim().optional(),
+    caseType: z.string().trim().optional(),
+    filingYear: z.string().trim().optional(),
+    courtName: z.string().trim().optional(),
+    state: z.string().trim().optional(),
+    firmId: z.string().optional(),
+    lawyerName: z.string().trim().min(2, "Lawyer name must be at least 2 characters"),
+    lawyerPhone: indianPhoneSchema,
+    clientName: z.string().trim().min(2, "Client name must be at least 2 characters"),
+    clientWhatsAppNumber: indianPhoneSchema,
+    additionalLawyers: z
+      .array(
+        z.object({
+          name: z.string().trim().min(2, "Lawyer name must be at least 2 characters"),
+          phone: indianPhoneSchema,
+          role: z.string().trim().optional(),
+        })
+      )
+      .optional(),
+    additionalClients: z
+      .array(
+        z.object({
+          name: z.string().trim().min(2, "Client name must be at least 2 characters"),
+          phone: indianPhoneSchema,
+          role: z.string().trim().optional(),
+        })
+      )
+      .optional(),
+  })
+  .refine(
+    (data) => Boolean(data.cnr?.trim() || data.caseNumber?.trim()),
+    {
+      message: "Please enter either a CNR Number or a Case Number.",
+      path: ["cnr"],
+    }
+  );
 
 export const simulateUpdateSchema = z.object({
   nextHearingDate: z.string().optional(),

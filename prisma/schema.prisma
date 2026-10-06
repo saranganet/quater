@@ -15,10 +15,47 @@ model Firm {
   contactPhone       String?
   clientMessageIntro String?
   clientCustomNote   String?
+  dispatchMode       String   @default("AUTOMATIC") // "AUTOMATIC" | "MANUAL"
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   cases              Case[]
+  members            FirmMember[]
+  attendances        AttendanceRecord[]
+}
+
+model FirmMember {
+  id        String   @id @default(uuid())
+  firmId    String
+  name      String
+  phone     String
+  role      String   @default("JUNIOR") // "ADMIN" (Lead/Senior Lawyer) | "JUNIOR" (Junior Advocate)
+  title     String?  // e.g. "Lead Advocate", "Junior Advocate", "Associate"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  firm        Firm               @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  attendances AttendanceRecord[]
+
+  @@index([firmId])
+  @@index([phone])
+}
+
+model AttendanceRecord {
+  id        String   @id @default(uuid())
+  firmId    String
+  memberId  String
+  date      String   // "YYYY-MM-DD" e.g. "2026-10-06"
+  status    String   @default("PRESENT") // "PRESENT", "ABSENT", "ON_LEAVE", "IN_COURT"
+  notes     String?  // e.g. "Appeared before Kalyan Civil Court No. 2"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  firm      Firm       @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  member    FirmMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([firmId, memberId, date])
+  @@index([firmId, date])
 }
 
 model Lawyer {
@@ -43,7 +80,7 @@ model Client {
 
 model Case {
   id                String         @id @default(uuid())
-  cnr               String         @unique
+  cnr               String
   lawyerId          String
   clientId          String
   firmId            String?
@@ -59,9 +96,11 @@ model Case {
   lawyer            Lawyer         @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
   client            Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
   firm              Firm?          @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  contacts          CaseContact[]
   snapshots         CaseSnapshot[]
   events            CaseEvent[]
 
+  @@unique([cnr, firmId])
   @@index([cnr])
   @@index([lawyerId])
   @@index([clientId])
@@ -119,4 +158,20 @@ model Notification {
   @@index([caseEventId])
   @@index([recipientPhone])
   @@index([idempotencyKey])
+}
+
+model CaseContact {
+  id        String   @id @default(uuid())
+  caseId    String
+  type      String   // "LAWYER" | "CLIENT"
+  name      String
+  phone     String   // WhatsApp number
+  role      String?  // e.g. "Junior Counsel", "Briefing Counsel", "Clerk", "Co-Petitioner", "Family Member"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([phone])
 }

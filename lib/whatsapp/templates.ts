@@ -1,4 +1,5 @@
 import { WhatsAppTemplateMessagePayload } from "./types";
+import { formatDateDMY, formatDatesInText } from "./date-formatter";
 
 export interface CaseUpdateTemplateVariables {
   caseNumber: string;
@@ -27,6 +28,8 @@ export function buildCaseUpdateTemplatePayload(
 ): WhatsAppTemplateMessagePayload {
   // Normalize phone number (E.164 without leading '+')
   const cleanPhone = toPhoneNumber.replace(/\D/g, "");
+  const formattedHearingDate = formatDateDMY(variables.nextHearingDate, "Not scheduled");
+  const formattedDescription = formatDatesInText(variables.changeDescription);
 
   return {
     messaging_product: "whatsapp",
@@ -44,8 +47,8 @@ export function buildCaseUpdateTemplatePayload(
           parameters: [
             { type: "text", text: variables.caseNumber || "N/A" },
             { type: "text", text: variables.cnr },
-            { type: "text", text: variables.changeDescription },
-            { type: "text", text: variables.nextHearingDate || "Not scheduled" },
+            { type: "text", text: formattedDescription },
+            { type: "text", text: formattedHearingDate },
           ],
         },
       ],
@@ -57,8 +60,10 @@ export function buildCaseUpdateTemplatePayload(
  * Formats a plain text message for fallback or logging
  */
 export function formatCaseUpdateTextMessage(variables: CaseUpdateTemplateVariables): string {
-  const nextHearingText = variables.nextHearingDate
-    ? `Next hearing: ${variables.nextHearingDate}`
+  const formattedHearingDate = formatDateDMY(variables.nextHearingDate);
+  const formattedDescription = formatDatesInText(variables.changeDescription);
+  const nextHearingText = formattedHearingDate
+    ? `Next hearing: ${formattedHearingDate}`
     : "Next hearing: To be notified";
 
   return `⚖️ Case Update
@@ -66,7 +71,7 @@ export function formatCaseUpdateTextMessage(variables: CaseUpdateTemplateVariabl
 Case: ${variables.caseNumber || "N/A"}
 CNR: ${variables.cnr}
 
-${variables.changeDescription}
+${formattedDescription}
 
 ${nextHearingText}
 
