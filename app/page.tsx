@@ -4,6 +4,9 @@ import { Plus, ArrowUpRight, Building2, Phone, UserCheck, ShieldCheck } from "lu
 import { getActiveFirm, getActiveRole } from "@/lib/firm-session";
 import { FirmLoginPortal } from "@/components/FirmLoginPortal";
 import { ChamberHeaderActions } from "@/components/ChamberHeaderActions";
+import { DailyBoardExportButton } from "@/components/DailyBoardExportButton";
+import { HearingRemindersWidget } from "@/components/HearingRemindersWidget";
+import { formatDateDMY } from "@/lib/whatsapp/date-formatter";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +130,8 @@ export default async function DashboardPage() {
             <span>Daily Attendance</span>
           </Link>
 
+          <DailyBoardExportButton firmId={activeFirm.id} />
+
           <ChamberHeaderActions />
 
           {activeRole === "ADMIN" ? (
@@ -198,6 +203,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 🔔 Tomorrow's Court Hearings & 1-Day-Prior Client Reminders Widget */}
+      <HearingRemindersWidget activeRole={activeRole} />
 
       {/* Main Cases Table - Isolated to This Firm */}
       <div className="border border-neutral-200 rounded-lg overflow-hidden bg-white">
@@ -289,7 +297,7 @@ export default async function DashboardPage() {
                       <td className="py-3.5 px-5 font-mono">
                         {normalized?.nextHearingDate ? (
                           <span className="font-semibold text-black bg-neutral-100 px-2 py-0.5 rounded">
-                            {normalized.nextHearingDate}
+                            {formatDateDMY(normalized.nextHearingDate)}
                           </span>
                         ) : (
                           <span className="text-neutral-400">—</span>

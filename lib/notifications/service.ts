@@ -111,6 +111,38 @@ ${contact}
 _Sent on behalf of ${firmName} via Quater Notification System._`;
 }
 
+export function formatClientEveReminderMessage(payload: {
+  caseNumber: string;
+  cnr: string;
+  courtName?: string;
+  stage?: string;
+  nextHearingDate: string;
+  clientName: string;
+  assignedAdvocate?: string;
+  firm?: FirmInfo | null;
+}): string {
+  const firmName = payload.firm?.name || "Your Legal Counsel";
+  const contactPhone = payload.firm?.contactPhone || "+91 98506 70809";
+  const formattedHearingDate = formatDateDMY(payload.nextHearingDate);
+  const advocateText = payload.assignedAdvocate ? `\n⚖️ *Counsel Assigned:* ${payload.assignedAdvocate}` : "";
+  const stageText = payload.stage ? `\n📌 *Purpose / Stage:* ${payload.stage}` : "";
+
+  return `🔔 *COURT HEARING REMINDER (TOMORROW)*
+*${firmName}*
+
+Dear ${payload.clientName},
+This is a prior reminder from our office that your matter is listed for hearing tomorrow:
+
+📋 *Case:* ${payload.caseNumber || "N/A"}
+🏛️ *Court:* ${payload.courtName || "eCourts India"}
+📅 *Hearing Date:* ${formattedHearingDate} (Tomorrow)${stageText}${advocateText}
+
+Please ensure your presence and keep the discussed case documents handy. For urgent briefings, contact our chamber:
+📞 *Contact:* ${contactPhone}
+
+_Sent on behalf of ${firmName} via Quater Notification System._`;
+}
+
 export class WhatsAppNotificationService implements NotificationService {
   private mode: "qr" | "meta" | "mock";
 

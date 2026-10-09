@@ -24,7 +24,9 @@ import {
   Share2,
   Send,
   MessageSquare,
+  FileText,
 } from "lucide-react";
+import { DailyBoardExportButton } from "@/components/DailyBoardExportButton";
 
 interface Lawyer {
   id: string;
@@ -435,6 +437,11 @@ export function FirmCalendar({
 
         {/* Action Controls & Cause List Print */}
         <div className="flex flex-wrap items-center gap-2.5">
+          <DailyBoardExportButton
+            firmId={selectedFirmId !== "all" ? selectedFirmId : undefined}
+            defaultDate={selectedDate || undefined}
+          />
+
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-semibold shadow-xs transition-colors"
@@ -738,12 +745,23 @@ export function FirmCalendar({
                 {activeHearings.length} {activeHearings.length === 1 ? "matter" : "matters"}
               </span>
               {selectedDate && (
-                <button
-                  onClick={() => setSelectedDate(null)}
-                  className="text-xs font-mono text-neutral-500 hover:text-black underline px-1"
-                >
-                  Clear Date
-                </button>
+                <>
+                  <a
+                    href={`/api/calendar/daily-board?date=${selectedDate}${selectedFirmId !== "all" ? `&firmId=${selectedFirmId}` : ""}`}
+                    download
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-800 text-[11px] font-semibold border border-blue-200 transition-colors"
+                    title="Download this day's cause board in Word format (.docx)"
+                  >
+                    <FileText className="w-3 h-3 text-blue-600" />
+                    <span>Export Day's Board (.docx)</span>
+                  </a>
+                  <button
+                    onClick={() => setSelectedDate(null)}
+                    className="text-xs font-mono text-neutral-500 hover:text-black underline px-1"
+                  >
+                    Clear Date
+                  </button>
+                </>
               )}
             </div>
           </div>

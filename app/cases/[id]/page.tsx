@@ -25,6 +25,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Lock,
+  Bell,
 } from "lucide-react";
 import { NormalizedCaseData } from "@/lib/ecourts/types";
 import { formatDateDMY } from "@/lib/whatsapp/date-formatter";
@@ -177,7 +178,7 @@ export default function CaseDetailPage({
     fetchSessionRole();
   }, [caseId]);
 
-  const openDispatchModal = (eventItem?: CaseEventItem) => {
+  const openDispatchModal = (eventItem?: CaseEventItem, isEveReminder = false) => {
     if (!caseData) return;
     const nextDate = caseData.snapshots[0]?.importantFields?.nextHearingDate;
     const formattedHearingDate = formatDateDMY(nextDate);
@@ -186,6 +187,43 @@ export default function CaseDetailPage({
     const nextHearingText = formattedHearingDate
       ? `📅 *Next Hearing Date:* ${formattedHearingDate}`
       : "📅 *Next Hearing Date:* To be scheduled";
+
+    if (isEveReminder) {
+      const clientEveMsg = `🔔 *COURT HEARING REMINDER (TOMORROW)*
+*${firmName}*
+
+Dear ${caseData.client.name},
+This is a prior reminder from our office that your matter is listed for hearing tomorrow:
+
+📋 *Case:* ${caseData.caseNumber || "N/A"}
+🏛️ *Court:* ${caseData.courtName || "eCourts India"}
+📅 *Hearing Date:* ${formattedHearingDate || "Tomorrow"}
+📌 *Stage / Purpose:* ${caseData.snapshots[0]?.importantFields?.stage || "Regular Listing"}
+⚖️ *Counsel Assigned:* ${caseData.lawyer?.name || "Advocate"}
+
+Please ensure your presence and keep the discussed case documents handy. For urgent briefings, contact our chamber:
+📞 *Contact:* ${contactPhone}
+
+_Sent on behalf of ${firmName} via Quater Notification System._`;
+
+      const lawyerEveMsg = `⚖️ *[COURT HEARING TOMORROW]*
+Advocate, case listed tomorrow:
+
+📋 *Case:* ${caseData.caseNumber || "N/A"}
+🏛️ *Court:* ${caseData.courtName || "eCourts India"}
+📅 *Date:* ${formattedHearingDate || "Tomorrow"}
+📌 *Stage:* ${caseData.snapshots[0]?.importantFields?.stage || "Regular Listing"}
+👤 *Client:* ${caseData.client.name} (${caseData.client.whatsappNumber})
+
+_Sent via Quater Chamber Diary_`;
+
+      setClientDraft(clientEveMsg);
+      setLawyerDraft(lawyerEveMsg);
+      setDispatchTargetEventId(eventItem ? eventItem.id : null);
+      setDispatchFeedback(null);
+      setShowDispatchModal(true);
+      return;
+    }
 
     // 1. Client Draft: strictly omit status and counsel notes
     const clientIntro =
@@ -632,9 +670,22 @@ _Powered by Quater Legal Updates_`;
         <div className="lg:col-span-8 space-y-6">
           {/* Next Listing & Status Card */}
           <div className="border border-neutral-200 rounded-lg p-5 bg-white space-y-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-black block">
-              Upcoming Listing & Stage
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-black block">
+                Upcoming Listing & Stage
+              </span>
+              {activeRole === "ADMIN" && normalized?.nextHearingDate && (
+                <button
+                  type="button"
+                  onClick={() => openDispatchModal(undefined, true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition-colors"
+                  title="Prepare and send 1-day prior hearing reminder to client via WhatsApp"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Send 1-Day Prior Reminder</span>
+                </button>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-neutral-200 divide-y sm:divide-y-0 sm:divide-x divide-neutral-200 rounded-md p-3.5 bg-neutral-50/50">
               <div>
