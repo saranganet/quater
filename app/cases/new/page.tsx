@@ -218,27 +218,6 @@ export default function NewCasePage() {
     );
   };
 
-  const handleQuickFill = () => {
-    if (entryMode === "cnr") {
-      setCnr("MHTH070086142019");
-    } else {
-      setSelectedState("MH");
-      setSelectedDistrict("Thane");
-      setCourtSelection("Civil Court S.D. Kalyan");
-      setCaseType("CS");
-      setCaseNumber("CS/377/2019");
-      setFilingYear("2019");
-      setCourtSearchQuery("");
-    }
-    setLawyerName("Adv. Nileema Saranga");
-    setLawyerPhone("+91 98506 70809");
-    setClientName("Soham Saranga");
-    setClientWhatsAppNumber("+91 80800 88656");
-    setAdditionalLawyers([]);
-    setAdditionalClients([]);
-    setErrorMessage(null);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -351,14 +330,6 @@ export default function NewCasePage() {
             Track New Court Case
           </h1>
         </div>
-
-        <button
-          type="button"
-          onClick={handleQuickFill}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-neutral-300 hover:border-black rounded-md bg-white text-neutral-800 transition-colors self-start sm:self-auto"
-        >
-          Autofill Sample Case + Contacts
-        </button>
       </div>
 
       {/* Main Form Box */}

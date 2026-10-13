@@ -27,6 +27,7 @@ export const STATE_DISTRICT_HIERARCHY: StateHierarchy[] = [
         courts: [
           "Civil Court S.D. Kalyan",
           "Civil Court Junior Division & JMFC, Kalyan",
+          "Civil Court Junior Division & JMFC, Ambernath",
           "District & Sessions Court, Thane",
           "Civil Court Senior Division, Thane",
           "Court of Small Causes, Thane",

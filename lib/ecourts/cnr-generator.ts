@@ -41,7 +41,7 @@ export function generateCnrFromCaseDetails(details: CaseDetailsForCnr): string {
   if (!districtCode) {
     if (courtText.includes("high court") || courtText.includes("hc")) districtCode = "HC";
     else if (courtText.includes("delhi") || courtText.includes("phc") || courtText.includes("tis hazari")) districtCode = "ND";
-    else if (courtText.includes("kalyan") || courtText.includes("thane")) districtCode = "TH";
+    else if (courtText.includes("kalyan") || courtText.includes("thane") || courtText.includes("ambernath") || courtText.includes("amb")) districtCode = "TH";
     else if (courtText.includes("pune")) districtCode = "PU";
     else if (courtText.includes("mumbai") || courtText.includes("bombay")) districtCode = "BO";
     else districtCode = "TH";

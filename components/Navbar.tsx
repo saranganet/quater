@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, LayoutDashboard, Calendar, CalendarCheck, Settings, Building2 } from "lucide-react";
+import { Plus, LayoutDashboard, Calendar, CalendarCheck, Settings, Building2, Gavel } from "lucide-react";
 import { WhatsAppGatewayStatus } from "./WhatsAppGatewayStatus";
 import { ActiveFirmBadge } from "./ActiveFirmBadge";
 
@@ -59,6 +59,14 @@ export function Navbar() {
             >
               <Calendar className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Calendar</span>
+            </Link>
+
+            <Link
+              href="/cause-list"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-600 hover:text-black hover:bg-neutral-100 rounded-md transition-colors"
+            >
+              <Gavel className="w-3.5 h-3.5 text-blue-600" />
+              <span>Cause List</span>
             </Link>
 
             <Link

@@ -5,7 +5,6 @@ import { NormalizedCaseData } from "../ecourts/types";
 import { detectCaseChanges } from "./detectChanges";
 import { notificationService } from "../notifications/service";
 import { DetectedChangeEvent } from "./types";
-import { getMockECourtsCase } from "../ecourts/mockData";
 
 export interface MonitorCaseResult {
   success: boolean;

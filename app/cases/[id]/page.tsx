@@ -608,18 +608,6 @@ _Powered by Quater Legal Updates_`;
           {activeRole === "ADMIN" && (
             <button
               type="button"
-              onClick={() => setShowSimModal(true)}
-              disabled={Boolean(actionLoading)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono border border-neutral-300 hover:border-black rounded-md bg-white text-neutral-800 transition-colors disabled:opacity-50"
-            >
-              <FlaskConical className="w-3.5 h-3.5" />
-              Simulate Update
-            </button>
-          )}
-
-          {activeRole === "ADMIN" && (
-            <button
-              type="button"
               onClick={handleCheckUpdates}
               disabled={Boolean(actionLoading)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-black hover:bg-neutral-800 text-white rounded-md transition-colors disabled:opacity-50"

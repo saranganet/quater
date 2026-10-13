@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { createCaseSchema } from "@/lib/validations/case";
 import { ecourtsClient, ECourtsAPIError } from "@/lib/ecourts/client";
 import { normalizeCaseData, calculateSnapshotHash } from "@/lib/ecourts/normalize";
-import { getMockECourtsCase } from "@/lib/ecourts/mockData";
 import { FIRM_COOKIE_NAME, ROLE_COOKIE_NAME } from "@/lib/firm-session";
 import { generateCnrFromCaseDetails } from "@/lib/ecourts/cnr-generator";
 
@@ -130,50 +129,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Retrieve case data from eCourtsIndia Partner API
+    // Retrieve case data from eCourtsIndia Partner API ONLY if a verified 16-character CNR was provided
     let rawCaseData: any = null;
+    let normalizedData: any = null;
+    const isExplicitCnr = Boolean(rawCnr && /^[A-Z0-9]{16}$/i.test(rawCnr.trim()));
     const apiKey = (process.env.ECOURTS_API_KEY || "").trim();
 
-    if (apiKey) {
+    if (isExplicitCnr && apiKey) {
       try {
-        console.log(`[eCourts] Fetching case details for CNR: ${cnr}`);
+        console.log(`[eCourts] Fetching live case details for verified CNR: ${cnr}`);
         rawCaseData = await ecourtsClient.getCase(cnr);
-      } catch (err: any) {
-        if (err instanceof ECourtsAPIError && (err.statusCode === 404 || err.errorCode === "NOT_FOUND")) {
-          console.warn(`[eCourts] CNR ${cnr} not found in live eCourts database. Falling back to test mock.`);
-          rawCaseData = getMockECourtsCase(cnr, {
-            caseNumber: caseNumber || undefined,
-            courtName: courtName || undefined,
-            caseType: caseType || undefined,
-          });
-        } else {
-          console.warn(`[eCourts] API error: ${err.message}. Using test mock dataset.`);
-          rawCaseData = getMockECourtsCase(cnr, {
-            caseNumber: caseNumber || undefined,
-            courtName: courtName || undefined,
-            caseType: caseType || undefined,
-          });
+        if (rawCaseData?.data?.courtCaseData) {
+          normalizedData = normalizeCaseData(rawCaseData);
         }
+      } catch (err: any) {
+        console.warn(`[eCourts] Live fetch for CNR ${cnr} returned: ${err.message}.`);
       }
-    } else {
-      console.log(`[eCourts] No ECOURTS_API_KEY configured. Generating standard test case mock.`);
-      rawCaseData = getMockECourtsCase(cnr, {
-        caseNumber: caseNumber || undefined,
-        courtName: courtName || undefined,
-        caseType: caseType || undefined,
-      });
     }
 
-    if (!rawCaseData) {
-      rawCaseData = getMockECourtsCase(cnr, {
-        caseNumber: caseNumber || undefined,
-        courtName: courtName || undefined,
-        caseType: caseType || undefined,
-      });
+    // If case data was not found on eCourts or entered via Case Number, use pure truthful user-entered records
+    // NEVER synthesize fake parties, fake judges, or fake hearings!
+    if (!normalizedData) {
+      normalizedData = {
+        cnr,
+        caseNumber: caseNumber || cnr,
+        courtName: courtName || "Court Establishment",
+        caseStatus: "PENDING",
+        nextHearingDate: null,
+        lastHearingDate: null,
+        decisionDate: null,
+        stage: "Registered in Chamber",
+        hearingCount: 0,
+        orderCount: 0,
+        petitioners: [clientName],
+        respondents: [],
+        advocates: [lawyerName],
+        judges: [],
+        latestHearing: null,
+        latestOrder: null,
+        latestProceeding: null,
+      };
     }
 
-    // Normalize case data
-    const normalizedData = normalizeCaseData(rawCaseData);
     const snapshotHash = calculateSnapshotHash(normalizedData);
 
     // Save Lawyer, Client, Case, and initial CaseSnapshot in database transaction
